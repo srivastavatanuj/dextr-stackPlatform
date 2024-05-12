@@ -52,7 +52,10 @@ contract StackingContract {
         );
         StackTokenInfo memory temp = stackInfo[msg.sender][_token];
         if (temp.amount != 0) {
-            if (temp.lastRewardCollectTimeStamp >= rewardDuration) {
+            if (
+                temp.lastRewardCollectTimeStamp + block.timestamp >=
+                rewardDuration
+            ) {
                 redeemReward(_token);
             }
             stackInfo[msg.sender][_token].amount += _amount;
@@ -71,12 +74,15 @@ contract StackingContract {
         StackTokenInfo memory temp = stackInfo[msg.sender][_token];
         require(allowedToken[_token] == true, "token not allowed");
         require(temp.amount >= _amount, "insufficient balance");
-        if (temp.lastRewardCollectTimeStamp >= rewardDuration) {
+        if (
+            temp.lastRewardCollectTimeStamp + block.timestamp >= rewardDuration
+        ) {
             redeemReward(_token);
         }
 
-        payable(msg.sender).transfer(_amount);
-        tokenBalance[msg.sender] -= _amount;
+        ercToken.transferFrom(address(this), msg.sender, _amount);
+        stackInfo[msg.sender][_token].amount -= _amount;
+        tokenBalance[_token] -= _amount;
     }
 
     function redeemReward(address _token) public {
@@ -96,9 +102,8 @@ contract StackingContract {
     }
 
     function transferfrom(address _from, address _to, uint256 _amount) private {
-        require(balanceOf[_from] >= _amount, "not enough balance");
         balanceOf[_from] -= _amount;
-        balanceOf[_to] = _amount;
+        balanceOf[_to] += _amount;
         emit Transfer(_from, _to, _amount);
     }
 

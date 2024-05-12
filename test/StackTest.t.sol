@@ -137,52 +137,84 @@ contract StackTest is Test {
     }
 
     function testRedeemRewardIsWorking() public {
-        vm.startPrank(owner);
+        vm.prank(owner);
+        bool status = ercToken.transfer(player_one, 2 * AMOUNT_TRANSFERED);
+        vm.startPrank(player_one);
+
+        stackContract.stack(address(ercToken), AMOUNT_TRANSFERED);
         stackContract.stack(address(ercToken), AMOUNT_TRANSFERED);
         uint256 timeStamp = stackContract
-            .getStackInfo(owner, address(ercToken))
+            .getStackInfo(player_one, address(ercToken))
             .lastRewardCollectTimeStamp;
         uint256 rewardDuration = stackContract.rewardDuration();
         vm.warp(timeStamp + rewardDuration + 1);
         stackContract.redeemReward(address(ercToken));
         vm.stopPrank();
 
-        assert(AMOUNT_TRANSFERED / 100 == stackContract.balanceOf(owner));
+        assert(
+            (2 * AMOUNT_TRANSFERED) / 100 == stackContract.balanceOf(player_one)
+        );
     }
 
     function testRewardRedeemedBeforeRestackAndTimestampUpdated() public {
-        vm.startPrank(owner);
+        vm.prank(owner);
+        bool status = ercToken.transfer(player_one, 2 * AMOUNT_TRANSFERED);
+        vm.startPrank(player_one);
         stackContract.stack(address(ercToken), AMOUNT_TRANSFERED);
 
         uint256 timeStamp = stackContract
-            .getStackInfo(owner, address(ercToken))
+            .getStackInfo(player_one, address(ercToken))
             .lastRewardCollectTimeStamp;
         uint256 rewardDuration = stackContract.rewardDuration();
         vm.warp(timeStamp + rewardDuration + 1);
         stackContract.stack(address(ercToken), AMOUNT_TRANSFERED);
         vm.stopPrank();
-        console.log(
-            stackContract.getStackInfo(owner, address(ercToken)).amount,
-            stackContract.balanceOf(owner),
-            AMOUNT_TRANSFERED,
-            AMOUNT_TRANSFERED / 100 == stackContract.balanceOf(owner)
+        uint256 initialBalance = stackContract.balanceOf(player_one);
+
+        assert(initialBalance == AMOUNT_TRANSFERED / 100);
+        assert(
+            stackContract
+                .getStackInfo(player_one, address(ercToken))
+                .lastRewardCollectTimeStamp == block.timestamp
         );
-        assert(AMOUNT_TRANSFERED / 100 == stackContract.balanceOf(owner));
-        // assert(
-        //     stackContract
-        //         .getStackInfo(owner, address(ercToken))
-        //         .lastRewardCollectTimeStamp == block.timestamp
-        // );
-        // console.log(
-        //     stackContract.getStackInfo(owner, address(ercToken)).amount
-        // );
     }
 
-    function testUserCanWithdrawAndBalanceUpdated() public {}
+    function testRevertIfInvalidTokenUsedForWithdraw() public {
+        vm.expectRevert("token not allowed");
+        stackContract.withdraw(owner, 1e18);
+    }
 
-    function testRevertIfInvalidTokenUsedForWithdraw() public {}
+    function testRevertIfStackAmountMoreThanWithdraw() public {
+        vm.expectRevert("insufficient balance");
+        stackContract.withdraw(address(ercToken), 1e18);
+    }
 
-    function testRevertIfStackAmountMoreThanWithdraw() public {}
+    function testUserCanWithdrawAndBalanceUpdated() public {
+        uint256 initialbalance = ercToken.balanceOf(owner);
+        vm.startPrank(owner);
+        stackContract.stack(address(ercToken), AMOUNT_TRANSFERED);
 
-    function testRewardRedeemedWhenWithdraw() public {}
+        vm.startPrank(owner);
+        stackContract.withdraw(address(ercToken), AMOUNT_TRANSFERED);
+        uint256 currentbalance = ercToken.balanceOf(owner);
+
+        assert(initialbalance == currentbalance);
+    }
+
+    function testRewardRedeemedWhenWithdraw() public {
+        vm.prank(owner);
+        bool status = ercToken.transfer(player_one, 2 * AMOUNT_TRANSFERED);
+        vm.startPrank(player_one);
+        stackContract.stack(address(ercToken), AMOUNT_TRANSFERED);
+
+        uint256 timeStamp = stackContract
+            .getStackInfo(player_one, address(ercToken))
+            .lastRewardCollectTimeStamp;
+        uint256 rewardDuration = stackContract.rewardDuration();
+        vm.warp(timeStamp + rewardDuration + 1);
+        stackContract.withdraw(address(ercToken), AMOUNT_TRANSFERED);
+        vm.stopPrank();
+
+        assert(stackContract.balanceOf(player_one) == AMOUNT_TRANSFERED / 100);
+    }
 }
