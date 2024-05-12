@@ -4,8 +4,9 @@ pragma solidity ^0.8.2;
 
 import "./ErcToken.sol";
 import "forge-std/console.sol";
+import "lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol";
 
-contract StackingContract {
+contract StackingContract is ReentrancyGuard {
     struct StackTokenInfo {
         uint256 amount;
         uint256 lastRewardCollectTimeStamp;
@@ -70,7 +71,7 @@ contract StackingContract {
         tokenBalance[_token] += _amount;
     }
 
-    function withdraw(address _token, uint256 _amount) public {
+    function withdraw(address _token, uint256 _amount) public nonReentrant {
         StackTokenInfo memory temp = stackInfo[msg.sender][_token];
         require(allowedToken[_token] == true, "token not allowed");
         require(temp.amount >= _amount, "insufficient balance");
@@ -85,7 +86,7 @@ contract StackingContract {
         tokenBalance[_token] -= _amount;
     }
 
-    function redeemReward(address _token) public {
+    function redeemReward(address _token) public nonReentrant {
         StackTokenInfo memory info = stackInfo[msg.sender][_token];
         require(allowedToken[_token] == true, "token not allowed");
         require(info.amount >= 0, "you haven't invested yet");

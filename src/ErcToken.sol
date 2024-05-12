@@ -36,7 +36,7 @@ contract ERCToken {
         address _from,
         address _to,
         uint256 _value
-    ) public returns (bool) {
+    ) external returns (bool) {
         require(balanceOf(_from) >= _value, "Insufficient balance");
         require(_to != address(0), "address can't be zero");
         s_balance[_from] -= _value;
